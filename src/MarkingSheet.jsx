@@ -40,7 +40,7 @@ export default function MarkingSheetBackup() {
     const fetchExistingReviews = async (recordId) => {
         try {
             const formBody = new URLSearchParams({
-                token: 'D139DF487922A7BA62DF951605B36389',
+                token: '639A1D732E66AD86D555D4E191C8B467',
                 content: 'record',
                 format: 'json',
                 type: 'flat',
@@ -83,7 +83,7 @@ export default function MarkingSheetBackup() {
 
         try {
             const formBody = new URLSearchParams({
-                token: 'D139DF487922A7BA62DF951605B36389',
+                token: '639A1D732E66AD86D555D4E191C8B467',
                 content: 'record',
                 format: 'json',
                 type: 'flat',
@@ -213,7 +213,7 @@ export default function MarkingSheetBackup() {
         try {
             // Fetch ALL data for this specific record
             const formBody = new URLSearchParams({
-                token: 'D139DF487922A7BA62DF951605B36389',
+                token: '639A1D732E66AD86D555D4E191C8B467',
                 content: 'record',
                 format: 'json',
                 type: 'flat',
@@ -324,7 +324,7 @@ export default function MarkingSheetBackup() {
             console.log('📤 Sending data to REDCap:', redcapData);
 
             const formBody = new URLSearchParams({
-                token: 'D139DF487922A7BA62DF951605B36389',
+                token: '639A1D732E66AD86D555D4E191C8B467',
                 content: 'record',
                 format: 'json',
                 type: 'flat',
