@@ -1,0 +1,15 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+```
+
+### **Solution 2: Add _redirects file**
+
+Alternatively, create `public/_redirects` (create `public` folder first if needed):
+```
+/*    /index.html   200
