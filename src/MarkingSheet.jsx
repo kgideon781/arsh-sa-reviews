@@ -27,6 +27,7 @@ export default function MarkingSheetBackup() {
 
     const [status, setStatus] = useState({ type: '', message: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showToast, setShowToast] = useState(false);
 
     const handleSliderChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: parseInt(value) }));
@@ -40,7 +41,7 @@ export default function MarkingSheetBackup() {
     const fetchExistingReviews = async (recordId) => {
         try {
             const formBody = new URLSearchParams({
-                token: '639A1D732E66AD86D555D4E191C8B467',
+                token: 'D139DF487922A7BA62DF951605B36389',
                 content: 'record',
                 format: 'json',
                 type: 'flat',
@@ -83,7 +84,7 @@ export default function MarkingSheetBackup() {
 
         try {
             const formBody = new URLSearchParams({
-                token: '639A1D732E66AD86D555D4E191C8B467',
+                token: 'D139DF487922A7BA62DF951605B36389',
                 content: 'record',
                 format: 'json',
                 type: 'flat',
@@ -213,7 +214,7 @@ export default function MarkingSheetBackup() {
         try {
             // Fetch ALL data for this specific record
             const formBody = new URLSearchParams({
-                token: '639A1D732E66AD86D555D4E191C8B467',
+                token: 'D139DF487922A7BA62DF951605B36389',
                 content: 'record',
                 format: 'json',
                 type: 'flat',
@@ -324,7 +325,7 @@ export default function MarkingSheetBackup() {
             console.log('📤 Sending data to REDCap:', redcapData);
 
             const formBody = new URLSearchParams({
-                token: '639A1D732E66AD86D555D4E191C8B467',
+                token: 'D139DF487922A7BA62DF951605B36389',
                 content: 'record',
                 format: 'json',
                 type: 'flat',
@@ -356,6 +357,13 @@ export default function MarkingSheetBackup() {
                 type: 'success',
                 message: `Review ${action} successfully! Instance #${instanceToUse} for ${formData.candidate_names}`
             });
+
+            // Scroll to top to show success message
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Show toast notification
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 5000); // Hide after 5 seconds
 
             // Refresh the existing reviews list
             await fetchExistingReviews(recordId);
@@ -722,6 +730,39 @@ export default function MarkingSheetBackup() {
                     <p>Backup Submission System • Data will be synced to REDCap</p>
                 </div>
             </div>
+
+            {/* Floating Toast Notification */}
+            {showToast && (
+                <div className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 animate-slide-up max-w-md z-50">
+                    <CheckCircle className="w-6 h-6 flex-shrink-0" />
+                    <div>
+                        <p className="font-bold">Success!</p>
+                        <p className="text-sm">Your review has been {selectedReviewInstance !== null ? 'updated' : 'submitted'} successfully.</p>
+                    </div>
+                    <button
+                        onClick={() => setShowToast(false)}
+                        className="ml-2 text-white hover:text-green-100 flex-shrink-0"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes slide-up {
+                    from {
+                        transform: translateY(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateY(0);
+                        opacity: 1;
+                    }
+                }
+                .animate-slide-up {
+                    animation: slide-up 0.3s ease-out;
+                }
+            `}</style>
         </div>
     );
 }
