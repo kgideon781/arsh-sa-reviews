@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Download, Search, Users, FileText, CheckCircle, AlertCircle, RefreshCw, Filter } from 'lucide-react';
 
-const ProposalsReviewDashboard = () => {
+const ProposalsReviewDashboard2 = () => {
     const [allData, setAllData] = useState([]);
     const [groupedData, setGroupedData] = useState({});
     const [loading, setLoading] = useState(false);
@@ -178,32 +178,6 @@ const ProposalsReviewDashboard = () => {
                 grouped[candidateName] = [];
             }
 
-            // Calculate individual percentages if not provided
-            const innovationPct = record.innovation_and_originality || ((parseFloat(record.bg_problem_clarity) - 1) / 2 * 23);
-            const relevancePct = record.relevance || ((parseFloat(record.bg_justification) - 1) / 2 * 18);
-            const feasibilityPct = record.feasibility || ((parseFloat(record.bg_literature) - 1) / 2 * 18);
-            const potentialPct = record.app_potential || ((parseFloat(record.bg_rationale) - 1) / 2 * 13);
-            const diversityPct = record.diversity_inclusion || ((parseFloat(record.diversity) - 1) / 2 * 9);
-            const collabPct = record.diversity_inclusion_2 || ((parseFloat(record.collab) - 1) / 2 * 9);
-            const cvPct = record.cv_applicant || ((parseFloat(record.applicant_cv) - 1) / 2 * 10);
-
-            // Calculate total score percentage - ALWAYS calculate as backup
-            // This matches REDCap's formula: round(((weighted sum) * 33.33), 2)
-            const calculatedTotalPct = (
-                (parseFloat(record.bg_problem_clarity) || 0) * 0.23 +
-                (parseFloat(record.bg_justification) || 0) * 0.18 +
-                (parseFloat(record.bg_literature) || 0) * 0.18 +
-                (parseFloat(record.bg_rationale) || 0) * 0.13 +
-                (parseFloat(record.diversity) || 0) * 0.09 +
-                (parseFloat(record.collab) || 0) * 0.09 +
-                (parseFloat(record.applicant_cv) || 0) * 0.10
-            ) * 33.33;
-
-            // Use REDCap summary if available and non-zero, otherwise use calculated
-            const totalScorePct = (record.summary && parseFloat(record.summary) > 0)
-                ? parseFloat(record.summary)
-                : calculatedTotalPct;
-
             grouped[candidateName].push({
                 originalEntry: record.candidate_names,
                 reviewerName: record.reviewer_name || 'Unknown Reviewer',
@@ -219,16 +193,7 @@ const ProposalsReviewDashboard = () => {
                 proposalStrength: parseFloat(record.strength_of_the_proposal1) || 0,
                 areasForImprovement: record.areas_for_improvement1 || '',
                 finalRecommendation: record.final_recommendation1 || '',
-                totalScore: parseFloat(record.format_total) || 0,
-                // Calculated percentage fields
-                innovationPct: parseFloat(innovationPct).toFixed(0),
-                relevancePct: parseFloat(relevancePct).toFixed(0),
-                feasibilityPct: parseFloat(feasibilityPct).toFixed(0),
-                potentialPct: parseFloat(potentialPct).toFixed(0),
-                diversityPct: parseFloat(diversityPct).toFixed(0),
-                collabPct: parseFloat(collabPct).toFixed(0),
-                cvPct: parseFloat(cvPct).toFixed(0),
-                totalScorePct: parseFloat(totalScorePct).toFixed(0)
+                totalScore: parseFloat(record.format_total) || 0
             });
         });
 
@@ -348,10 +313,7 @@ const ProposalsReviewDashboard = () => {
             const exportData = [];
 
             Object.keys(groupedData).sort().forEach(candidate => {
-                const reviews = groupedData[candidate];
-
-                // Add all reviews for this candidate
-                reviews.forEach((review, index) => {
+                groupedData[candidate].forEach((review, index) => {
                     const researchTotal = review.problemClarity + review.justification +
                         review.literature + review.rationale + review.diversity + review.collab;
 
@@ -369,79 +331,18 @@ const ProposalsReviewDashboard = () => {
                         'Reviewer Email': review.reviewerEmail,
                         'Review Date': review.reviewDate,
                         'Innovation & Originality': review.problemClarity,
-                        'Innovation %': review.innovationPct + '%',
                         'Relevance': review.justification,
-                        'Relevance %': review.relevancePct + '%',
                         'Feasibility': review.literature,
-                        'Feasibility %': review.feasibilityPct + '%',
                         'Applicant Potential': review.rationale,
-                        'Potential %': review.potentialPct + '%',
                         'Diversity & Inclusion': review.diversity,
-                        'Diversity %': review.diversityPct + '%',
                         'Collaboration': review.collab,
-                        'Collaboration %': review.collabPct + '%',
                         'Applicant CV': review.applicantCV,
-                        'CV %': review.cvPct + '%',
                         'Proposal Strength': review.proposalStrength,
                         'Research Subtotal': researchTotal.toFixed(1),
                         'Total Score': review.totalScore,
-                        'Total Score %': review.totalScorePct + '%',
                         'Final Recommendation': recText,
                         'Areas for Improvement': parsedImprovement
                     });
-                });
-
-                // Calculate averages for this candidate
-                const avgInnovation = (reviews.reduce((sum, r) => sum + r.problemClarity, 0) / reviews.length).toFixed(1);
-                const avgRelevance = (reviews.reduce((sum, r) => sum + r.justification, 0) / reviews.length).toFixed(1);
-                const avgFeasibility = (reviews.reduce((sum, r) => sum + r.literature, 0) / reviews.length).toFixed(1);
-                const avgPotential = (reviews.reduce((sum, r) => sum + r.rationale, 0) / reviews.length).toFixed(1);
-                const avgDiversity = (reviews.reduce((sum, r) => sum + r.diversity, 0) / reviews.length).toFixed(1);
-                const avgCollab = (reviews.reduce((sum, r) => sum + r.collab, 0) / reviews.length).toFixed(1);
-                const avgCV = (reviews.reduce((sum, r) => sum + r.applicantCV, 0) / reviews.length).toFixed(1);
-                const avgProposalStrength = (reviews.reduce((sum, r) => sum + r.proposalStrength, 0) / reviews.length).toFixed(1);
-                const avgTotalScore = (reviews.reduce((sum, r) => sum + r.totalScore, 0) / reviews.length).toFixed(1);
-                const avgTotalScorePct = (reviews.reduce((sum, r) => sum + parseFloat(r.totalScorePct), 0) / reviews.length).toFixed(0);
-
-                const avgInnovationPct = ((avgInnovation - 1) / 2 * 23).toFixed(0);
-                const avgRelevancePct = ((avgRelevance - 1) / 2 * 18).toFixed(0);
-                const avgFeasibilityPct = ((avgFeasibility - 1) / 2 * 18).toFixed(0);
-                const avgPotentialPct = ((avgPotential - 1) / 2 * 13).toFixed(0);
-                const avgDiversityPct = ((avgDiversity - 1) / 2 * 9).toFixed(0);
-                const avgCollabPct = ((avgCollab - 1) / 2 * 9).toFixed(0);
-                const avgCVPct = ((avgCV - 1) / 2 * 10).toFixed(0);
-
-                const avgResearchTotal = (parseFloat(avgInnovation) + parseFloat(avgRelevance) +
-                    parseFloat(avgFeasibility) + parseFloat(avgPotential) +
-                    parseFloat(avgDiversity) + parseFloat(avgCollab)).toFixed(1);
-
-                // Add average row
-                exportData.push({
-                    'Candidate Name': candidate,
-                    'Reviewer #': 'AVERAGE',
-                    'Reviewer Name': '',
-                    'Reviewer Email': '',
-                    'Review Date': '',
-                    'Innovation & Originality': avgInnovation,
-                    'Innovation %': avgInnovationPct + '%',
-                    'Relevance': avgRelevance,
-                    'Relevance %': avgRelevancePct + '%',
-                    'Feasibility': avgFeasibility,
-                    'Feasibility %': avgFeasibilityPct + '%',
-                    'Applicant Potential': avgPotential,
-                    'Potential %': avgPotentialPct + '%',
-                    'Diversity & Inclusion': avgDiversity,
-                    'Diversity %': avgDiversityPct + '%',
-                    'Collaboration': avgCollab,
-                    'Collaboration %': avgCollabPct + '%',
-                    'Applicant CV': avgCV,
-                    'CV %': avgCVPct + '%',
-                    'Proposal Strength': avgProposalStrength,
-                    'Research Subtotal': avgResearchTotal,
-                    'Total Score': avgTotalScore,
-                    'Total Score %': avgTotalScorePct + '%',
-                    'Final Recommendation': '',
-                    'Areas for Improvement': ''
                 });
             });
 
@@ -455,23 +356,15 @@ const ProposalsReviewDashboard = () => {
                 { wch: 30 }, // Reviewer Email
                 { wch: 15 }, // Review Date
                 { wch: 12 }, // Innovation
-                { wch: 10 }, // Innovation %
                 { wch: 12 }, // Relevance
-                { wch: 10 }, // Relevance %
                 { wch: 12 }, // Feasibility
-                { wch: 10 }, // Feasibility %
                 { wch: 12 }, // Applicant Potential
-                { wch: 10 }, // Potential %
                 { wch: 12 }, // Diversity
-                { wch: 10 }, // Diversity %
                 { wch: 12 }, // Collaboration
-                { wch: 10 }, // Collaboration %
                 { wch: 12 }, // Applicant CV
-                { wch: 10 }, // CV %
                 { wch: 12 }, // Proposal Strength
                 { wch: 12 }, // Research Subtotal
                 { wch: 12 }, // Total Score
-                { wch: 12 }, // Total Score %
                 { wch: 20 }, // Final Recommendation
                 { wch: 60 }  // Areas for Improvement
             ];
@@ -756,49 +649,22 @@ const ProposalsReviewDashboard = () => {
                                                         </td>
                                                         <td className="px-6 py-4 text-sm text-gray-600">{review.reviewDate || 'N/A'}</td>
                                                         <td className="px-6 py-4">
-                                                            <div className="space-y-2">
-                                                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                                                    <div className="bg-blue-50 p-2 rounded">
-                                                                        <div className="font-medium text-blue-900">Innovation: {review.problemClarity}</div>
-                                                                        <div className="text-xs text-blue-600">({review.innovationPct}% of 23)</div>
-                                                                        <div className="text-blue-700">Relevance: {review.justification}</div>
-                                                                        <div className="text-xs text-blue-600">({review.relevancePct}% of 18)</div>
-                                                                        <div className="text-blue-700">Feasibility: {review.literature}</div>
-                                                                        <div className="text-xs text-blue-600">({review.feasibilityPct}% of 18)</div>
-                                                                    </div>
-                                                                    <div className="bg-purple-50 p-2 rounded">
-                                                                        <div className="font-medium text-purple-900">Potential: {review.rationale}</div>
-                                                                        <div className="text-xs text-purple-600">({review.potentialPct}% of 13)</div>
-                                                                        <div className="text-purple-700">Collaboration: {review.collab}</div>
-                                                                        <div className="text-xs text-purple-600">({review.collabPct}% of 9)</div>
-                                                                        <div className="text-purple-700">CV Quality: {review.applicantCV}</div>
-                                                                        <div className="text-xs text-purple-600">({review.cvPct}% of 10)</div>
-                                                                    </div>
+                                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                                <div className="bg-blue-50 p-2 rounded">
+                                                                    <div className="font-medium text-blue-900">Innovation: {review.problemClarity}</div>
+                                                                    <div className="text-blue-700">Relevance: {review.justification}</div>
+                                                                    <div className="text-blue-700">Feasibility: {review.literature}</div>
+                                                                </div>
+                                                                <div className="bg-purple-50 p-2 rounded">
+                                                                    <div className="font-medium text-purple-900">Potential: {review.rationale}</div>
+                                                                    <div className="text-purple-700">Collaboration: {review.collab}</div>
+                                                                    <div className="text-purple-700">CV Quality: {review.applicantCV}</div>
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <div className="text-center">
-                                                                <div className="text-3xl font-bold text-emerald-600">{review.totalScore}</div>
-                                                                <div className="text-xs text-gray-500">out of 21</div>
-                                                                <div className="mt-2 text-lg font-semibold text-emerald-700">
-                                                                    {(() => {
-                                                                        // Fallback calculation if totalScorePct is 0 or missing
-                                                                        const displayPct = review.totalScorePct && parseFloat(review.totalScorePct) > 0
-                                                                            ? parseFloat(review.totalScorePct)
-                                                                            : (
-                                                                            (review.problemClarity * 0.23) +
-                                                                            (review.justification * 0.18) +
-                                                                            (review.literature * 0.18) +
-                                                                            (review.rationale * 0.13) +
-                                                                            (review.diversity * 0.09) +
-                                                                            (review.collab * 0.09) +
-                                                                            (review.applicantCV * 0.10)
-                                                                        ) * 33.33;
-                                                                        return displayPct.toFixed(0);
-                                                                    })()}%
-                                                                </div>
-                                                            </div>
+                                                            <div className="text-3xl font-bold text-emerald-600">{review.totalScore}</div>
+                                                            <div className="text-xs text-gray-500">out of 21</div>
                                                         </td>
                                                         <td className="px-6 py-4">
                                 <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium ${badge.class}`}>
@@ -816,74 +682,6 @@ const ProposalsReviewDashboard = () => {
                                                     </tr>
                                                 );
                                             })}
-                                            {/* Average Row */}
-                                            {reviews.length > 1 && (() => {
-                                                const avgInnovation = (reviews.reduce((sum, r) => sum + r.problemClarity, 0) / reviews.length).toFixed(1);
-                                                const avgRelevance = (reviews.reduce((sum, r) => sum + r.justification, 0) / reviews.length).toFixed(1);
-                                                const avgFeasibility = (reviews.reduce((sum, r) => sum + r.literature, 0) / reviews.length).toFixed(1);
-                                                const avgPotential = (reviews.reduce((sum, r) => sum + r.rationale, 0) / reviews.length).toFixed(1);
-                                                const avgDiversity = (reviews.reduce((sum, r) => sum + r.diversity, 0) / reviews.length).toFixed(1);
-                                                const avgCollab = (reviews.reduce((sum, r) => sum + r.collab, 0) / reviews.length).toFixed(1);
-                                                const avgCV = (reviews.reduce((sum, r) => sum + r.applicantCV, 0) / reviews.length).toFixed(1);
-                                                const avgTotalScore = (reviews.reduce((sum, r) => sum + r.totalScore, 0) / reviews.length).toFixed(1);
-                                                const avgTotalScorePct = (reviews.reduce((sum, r) => sum + parseFloat(r.totalScorePct), 0) / reviews.length).toFixed(0);
-
-                                                const avgInnovationPct = ((avgInnovation - 1) / 2 * 23).toFixed(0);
-                                                const avgRelevancePct = ((avgRelevance - 1) / 2 * 18).toFixed(0);
-                                                const avgFeasibilityPct = ((avgFeasibility - 1) / 2 * 18).toFixed(0);
-                                                const avgPotentialPct = ((avgPotential - 1) / 2 * 13).toFixed(0);
-                                                const avgDiversityPct = ((avgDiversity - 1) / 2 * 9).toFixed(0);
-                                                const avgCollabPct = ((avgCollab - 1) / 2 * 9).toFixed(0);
-                                                const avgCVPct = ((avgCV - 1) / 2 * 10).toFixed(0);
-
-                                                return (
-                                                    <tr className="bg-gradient-to-r from-amber-50 to-yellow-50 border-t-2 border-amber-300 font-semibold">
-                                                        <td className="px-6 py-4">
-                                                            <span className="inline-flex items-center justify-center w-8 h-8 bg-amber-200 text-amber-800 rounded-full font-bold text-xs">
-                                                                AVG
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="font-bold text-amber-900 text-lg">Average Scores</div>
-                                                            <div className="text-sm text-amber-700">Across {reviews.length} reviews</div>
-                                                        </td>
-                                                        <td className="px-6 py-4"></td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="space-y-2">
-                                                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                                                    <div className="bg-blue-100 p-2 rounded border border-blue-300">
-                                                                        <div className="font-bold text-blue-900">Innovation: {avgInnovation}</div>
-                                                                        <div className="text-xs text-blue-700">({avgInnovationPct}% of 23)</div>
-                                                                        <div className="text-blue-800 font-semibold">Relevance: {avgRelevance}</div>
-                                                                        <div className="text-xs text-blue-700">({avgRelevancePct}% of 18)</div>
-                                                                        <div className="text-blue-800 font-semibold">Feasibility: {avgFeasibility}</div>
-                                                                        <div className="text-xs text-blue-700">({avgFeasibilityPct}% of 18)</div>
-                                                                    </div>
-                                                                    <div className="bg-purple-100 p-2 rounded border border-purple-300">
-                                                                        <div className="font-bold text-purple-900">Potential: {avgPotential}</div>
-                                                                        <div className="text-xs text-purple-700">({avgPotentialPct}% of 13)</div>
-                                                                        <div className="text-purple-800 font-semibold">Collaboration: {avgCollab}</div>
-                                                                        <div className="text-xs text-purple-700">({avgCollabPct}% of 9)</div>
-                                                                        <div className="text-purple-800 font-semibold">CV Quality: {avgCV}</div>
-                                                                        <div className="text-xs text-purple-700">({avgCVPct}% of 10)</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="text-center">
-                                                                <div className="text-3xl font-bold text-amber-700">{avgTotalScore}</div>
-                                                                <div className="text-xs text-amber-600">out of 21</div>
-                                                                <div className="mt-2 text-lg font-bold text-amber-800">
-                                                                    {avgTotalScorePct}%
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4"></td>
-                                                        <td className="px-6 py-4"></td>
-                                                    </tr>
-                                                );
-                                            })()}
                                             </tbody>
                                         </table>
                                     </div>
@@ -981,4 +779,4 @@ const ProposalsReviewDashboard = () => {
     );
 };
 
-export default ProposalsReviewDashboard;
+export default ProposalsReviewDashboard2;
