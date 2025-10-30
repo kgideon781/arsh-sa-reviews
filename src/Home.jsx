@@ -638,7 +638,7 @@ const ProposalsReviewDashboard = () => {
                 )}
 
                 {/* Weighted Scoring Explanation */}
-                {Object.keys(groupedData).length > 0 && (
+                {/*{Object.keys(groupedData).length > 0 && (
                     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-md border-2 border-blue-200 p-6">
                         <div className="flex items-start gap-3">
                             <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
@@ -646,7 +646,7 @@ const ProposalsReviewDashboard = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                           {/* <div className="flex-1">
+                            <div className="flex-1">
                                 <h3 className="text-lg font-bold text-blue-900 mb-3">Understanding Total Score Percentages</h3>
                                 <p className="text-blue-800 mb-4">
                                     Two candidates with the same total score (e.g., 20/21) may have <span className="font-semibold">different percentage scores</span> because
@@ -691,11 +691,11 @@ const ProposalsReviewDashboard = () => {
                                         a bigger impact on the total percentage (~6% reduction) than losing 1 point in <span className="font-semibold">Collaboration (9% weight)</span> (~3% reduction).
                                     </p>
                                 </div>
-                            </div>*/}
+                            </div>
                         </div>
                     </div>
                 )}
-
+*/}
                 {/* Filters */}
                 {Object.keys(groupedData).length > 0 && (
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
