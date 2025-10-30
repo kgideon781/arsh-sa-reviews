@@ -179,13 +179,14 @@ const ProposalsReviewDashboard = () => {
             }
 
             // Calculate individual percentages if not provided
-            const innovationPct = record.innovation_and_originality || ((parseFloat(record.bg_problem_clarity) - 1) / 2 * 23);
-            const relevancePct = record.relevance || ((parseFloat(record.bg_justification) - 1) / 2 * 18);
-            const feasibilityPct = record.feasibility || ((parseFloat(record.bg_literature) - 1) / 2 * 18);
-            const potentialPct = record.app_potential || ((parseFloat(record.bg_rationale) - 1) / 2 * 13);
-            const diversityPct = record.diversity_inclusion || ((parseFloat(record.diversity) - 1) / 2 * 9);
-            const collabPct = record.diversity_inclusion_2 || ((parseFloat(record.collab) - 1) / 2 * 9);
-            const cvPct = record.cv_applicant || ((parseFloat(record.applicant_cv) - 1) / 2 * 10);
+            // Using raw score / max score formula (e.g., 1/3 = 33%, 2/3 = 67%, 3/3 = 100%)
+            const innovationPct = record.innovation_and_originality || ((parseFloat(record.bg_problem_clarity) / 3) * 100);
+            const relevancePct = record.relevance || ((parseFloat(record.bg_justification) / 3) * 100);
+            const feasibilityPct = record.feasibility || ((parseFloat(record.bg_literature) / 3) * 100);
+            const potentialPct = record.app_potential || ((parseFloat(record.bg_rationale) / 3) * 100);
+            const diversityPct = record.diversity_inclusion || ((parseFloat(record.diversity) / 3) * 100);
+            const collabPct = record.diversity_inclusion_2 || ((parseFloat(record.collab) / 3) * 100);
+            const cvPct = record.cv_applicant || ((parseFloat(record.applicant_cv) / 3) * 100);
 
             // Calculate total score percentage - ALWAYS calculate as backup
             // This matches REDCap's formula: round(((weighted sum) * 33.33), 2)
@@ -403,13 +404,13 @@ const ProposalsReviewDashboard = () => {
                 const avgTotalScore = (reviews.reduce((sum, r) => sum + r.totalScore, 0) / reviews.length).toFixed(1);
                 const avgTotalScorePct = (reviews.reduce((sum, r) => sum + parseFloat(r.totalScorePct), 0) / reviews.length).toFixed(0);
 
-                const avgInnovationPct = ((avgInnovation - 1) / 2 * 23).toFixed(0);
-                const avgRelevancePct = ((avgRelevance - 1) / 2 * 18).toFixed(0);
-                const avgFeasibilityPct = ((avgFeasibility - 1) / 2 * 18).toFixed(0);
-                const avgPotentialPct = ((avgPotential - 1) / 2 * 13).toFixed(0);
-                const avgDiversityPct = ((avgDiversity - 1) / 2 * 9).toFixed(0);
-                const avgCollabPct = ((avgCollab - 1) / 2 * 9).toFixed(0);
-                const avgCVPct = ((avgCV - 1) / 2 * 10).toFixed(0);
+                const avgInnovationPct = ((avgInnovation / 3) * 100).toFixed(0);
+                const avgRelevancePct = ((avgRelevance / 3) * 100).toFixed(0);
+                const avgFeasibilityPct = ((avgFeasibility / 3) * 100).toFixed(0);
+                const avgPotentialPct = ((avgPotential / 3) * 100).toFixed(0);
+                const avgDiversityPct = ((avgDiversity / 3) * 100).toFixed(0);
+                const avgCollabPct = ((avgCollab / 3) * 100).toFixed(0);
+                const avgCVPct = ((avgCV / 3) * 100).toFixed(0);
 
                 const avgResearchTotal = (parseFloat(avgInnovation) + parseFloat(avgRelevance) +
                     parseFloat(avgFeasibility) + parseFloat(avgPotential) +
@@ -760,19 +761,19 @@ const ProposalsReviewDashboard = () => {
                                                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                                                     <div className="bg-blue-50 p-2 rounded">
                                                                         <div className="font-medium text-blue-900">Innovation: {review.problemClarity}</div>
-                                                                        <div className="text-xs text-blue-600">({review.innovationPct}% of 23)</div>
+                                                                        <div className="text-xs text-blue-600">({review.innovationPct}%)</div>
                                                                         <div className="text-blue-700">Relevance: {review.justification}</div>
-                                                                        <div className="text-xs text-blue-600">({review.relevancePct}% of 18)</div>
+                                                                        <div className="text-xs text-blue-600">({review.relevancePct}%)</div>
                                                                         <div className="text-blue-700">Feasibility: {review.literature}</div>
-                                                                        <div className="text-xs text-blue-600">({review.feasibilityPct}% of 18)</div>
+                                                                        <div className="text-xs text-blue-600">({review.feasibilityPct}%)</div>
                                                                     </div>
                                                                     <div className="bg-purple-50 p-2 rounded">
                                                                         <div className="font-medium text-purple-900">Potential: {review.rationale}</div>
-                                                                        <div className="text-xs text-purple-600">({review.potentialPct}% of 13)</div>
+                                                                        <div className="text-xs text-purple-600">({review.potentialPct}%)</div>
                                                                         <div className="text-purple-700">Collaboration: {review.collab}</div>
-                                                                        <div className="text-xs text-purple-600">({review.collabPct}% of 9)</div>
+                                                                        <div className="text-xs text-purple-600">({review.collabPct}%)</div>
                                                                         <div className="text-purple-700">CV Quality: {review.applicantCV}</div>
-                                                                        <div className="text-xs text-purple-600">({review.cvPct}% of 10)</div>
+                                                                        <div className="text-xs text-purple-600">({review.cvPct}%)</div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -828,13 +829,13 @@ const ProposalsReviewDashboard = () => {
                                                 const avgTotalScore = (reviews.reduce((sum, r) => sum + r.totalScore, 0) / reviews.length).toFixed(1);
                                                 const avgTotalScorePct = (reviews.reduce((sum, r) => sum + parseFloat(r.totalScorePct), 0) / reviews.length).toFixed(0);
 
-                                                const avgInnovationPct = ((avgInnovation - 1) / 2 * 23).toFixed(0);
-                                                const avgRelevancePct = ((avgRelevance - 1) / 2 * 18).toFixed(0);
-                                                const avgFeasibilityPct = ((avgFeasibility - 1) / 2 * 18).toFixed(0);
-                                                const avgPotentialPct = ((avgPotential - 1) / 2 * 13).toFixed(0);
-                                                const avgDiversityPct = ((avgDiversity - 1) / 2 * 9).toFixed(0);
-                                                const avgCollabPct = ((avgCollab - 1) / 2 * 9).toFixed(0);
-                                                const avgCVPct = ((avgCV - 1) / 2 * 10).toFixed(0);
+                                                const avgInnovationPct = ((avgInnovation / 3) * 100).toFixed(0);
+                                                const avgRelevancePct = ((avgRelevance / 3) * 100).toFixed(0);
+                                                const avgFeasibilityPct = ((avgFeasibility / 3) * 100).toFixed(0);
+                                                const avgPotentialPct = ((avgPotential / 3) * 100).toFixed(0);
+                                                const avgDiversityPct = ((avgDiversity / 3) * 100).toFixed(0);
+                                                const avgCollabPct = ((avgCollab / 3) * 100).toFixed(0);
+                                                const avgCVPct = ((avgCV / 3) * 100).toFixed(0);
 
                                                 return (
                                                     <tr className="bg-gradient-to-r from-amber-50 to-yellow-50 border-t-2 border-amber-300 font-semibold">
@@ -853,19 +854,19 @@ const ProposalsReviewDashboard = () => {
                                                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                                                     <div className="bg-blue-100 p-2 rounded border border-blue-300">
                                                                         <div className="font-bold text-blue-900">Innovation: {avgInnovation}</div>
-                                                                        <div className="text-xs text-blue-700">({avgInnovationPct}% of 23)</div>
+                                                                        <div className="text-xs text-blue-700">({avgInnovationPct}%)</div>
                                                                         <div className="text-blue-800 font-semibold">Relevance: {avgRelevance}</div>
-                                                                        <div className="text-xs text-blue-700">({avgRelevancePct}% of 18)</div>
+                                                                        <div className="text-xs text-blue-700">({avgRelevancePct}%)</div>
                                                                         <div className="text-blue-800 font-semibold">Feasibility: {avgFeasibility}</div>
-                                                                        <div className="text-xs text-blue-700">({avgFeasibilityPct}% of 18)</div>
+                                                                        <div className="text-xs text-blue-700">({avgFeasibilityPct}%)</div>
                                                                     </div>
                                                                     <div className="bg-purple-100 p-2 rounded border border-purple-300">
                                                                         <div className="font-bold text-purple-900">Potential: {avgPotential}</div>
-                                                                        <div className="text-xs text-purple-700">({avgPotentialPct}% of 13)</div>
+                                                                        <div className="text-xs text-purple-700">({avgPotentialPct}%)</div>
                                                                         <div className="text-purple-800 font-semibold">Collaboration: {avgCollab}</div>
-                                                                        <div className="text-xs text-purple-700">({avgCollabPct}% of 9)</div>
+                                                                        <div className="text-xs text-purple-700">({avgCollabPct}%)</div>
                                                                         <div className="text-purple-800 font-semibold">CV Quality: {avgCV}</div>
-                                                                        <div className="text-xs text-purple-700">({avgCVPct}% of 10)</div>
+                                                                        <div className="text-xs text-purple-700">({avgCVPct}%)</div>
                                                                     </div>
                                                                 </div>
                                                             </div>
