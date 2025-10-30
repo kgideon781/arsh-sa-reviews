@@ -1,36 +1,44 @@
 exports.handler = async (event, context) => {
-    // Only accept POST requests
     if (event.httpMethod !== 'POST') {
+        // For GET requests, return a simple page or redirect
         return {
-            statusCode: 405,
-            body: JSON.stringify({ error: 'Method Not Allowed' })
+            statusCode: 200,
+            headers: { 'Content-Type': 'text/html' },
+            body: `
+        <!DOCTYPE html>
+        <html>
+          <head><title>REDCap Handler</title></head>
+          <body>
+            <h1>REDCap Payment Handler</h1>
+            <p>This endpoint receives POST data from REDCap.</p>
+            <p>Status: Ready</p>
+          </body>
+        </html>
+      `
         };
     }
 
+    // Handle POST from REDCap
     try {
-        // Parse the form data from REDCap
         const params = new URLSearchParams(event.body);
         const data = Object.fromEntries(params);
 
-        // Log the received data
-        console.log('REDCap Data Received:', JSON.stringify(data, null, 2));
+        console.log('REDCap Data:', JSON.stringify(data, null, 2));
 
-        // Here you can process the data as needed
-        // For example, store it, send notifications, etc.
+        // TODO: Process the data - store it, trigger actions, etc.
 
         return {
             statusCode: 200,
             body: JSON.stringify({
                 success: true,
-                message: 'Data received successfully',
-                receivedFields: Object.keys(data)
+                message: 'Payment data received'
             })
         };
     } catch (error) {
-        console.error('Error processing REDCap data:', error);
+        console.error('Error:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Internal Server Error' })
+            body: JSON.stringify({ error: error.message })
         };
     }
 };
