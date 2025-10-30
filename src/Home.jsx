@@ -637,6 +637,65 @@ const ProposalsReviewDashboard = () => {
                     </div>
                 )}
 
+                {/* Weighted Scoring Explanation */}
+                {Object.keys(groupedData).length > 0 && (
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-md border-2 border-blue-200 p-6">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-bold text-blue-900 mb-3">Understanding Total Score Percentages</h3>
+                                <p className="text-blue-800 mb-4">
+                                    Two candidates with the same total score (e.g., 20/21) may have <span className="font-semibold">different percentage scores</span> because
+                                    each criterion is <span className="font-semibold">weighted differently</span> based on its importance to the program.
+                                </p>
+                                <div className="bg-white rounded-lg p-4 mb-3">
+                                    <h4 className="font-semibold text-blue-900 mb-2">Criterion Weights:</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                            <span className="text-gray-700"><span className="font-semibold">Innovation:</span> 23%</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                            <span className="text-gray-700"><span className="font-semibold">Relevance:</span> 18%</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                            <span className="text-gray-700"><span className="font-semibold">Feasibility:</span> 18%</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                            <span className="text-gray-700"><span className="font-semibold">Potential:</span> 13%</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                            <span className="text-gray-700"><span className="font-semibold">CV Quality:</span> 10%</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                            <span className="text-gray-700"><span className="font-semibold">Diversity:</span> 9%</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                            <span className="text-gray-700"><span className="font-semibold">Collaboration:</span> 9%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-blue-100 rounded-lg p-4 border border-blue-300">
+                                    <p className="text-sm text-blue-900">
+                                        <span className="font-semibold">Example:</span> Losing 1 point in <span className="font-semibold">Feasibility (18% weight)</span> has
+                                        a bigger impact on the total percentage (~6% reduction) than losing 1 point in <span className="font-semibold">Collaboration (9% weight)</span> (~3% reduction).
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Filters */}
                 {Object.keys(groupedData).length > 0 && (
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
