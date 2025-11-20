@@ -69,6 +69,7 @@ exports.handler = async (event, context) => {
                 }
             );
 
+
             const getUserResult = await getUserResponse.json();
             if (getUserResult[0]) {
                 userId = getUserResult[0].id;
