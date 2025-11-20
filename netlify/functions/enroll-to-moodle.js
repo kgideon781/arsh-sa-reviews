@@ -6,6 +6,7 @@ exports.handler = async (event, context) => {
     const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
     const FROM_EMAIL = 'virtualacademy@aphrc.org' || 'noreply@aphrc.org';
 
+
     try {
         const { userData } = JSON.parse(event.body);
 
