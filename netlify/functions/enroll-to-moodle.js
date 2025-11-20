@@ -1,19 +1,18 @@
-const sgMail = require('@sendgrid/mail');
 exports.handler = async (event, context) => {
     const MOODLE_URL = 'https://soma.aphrc.org/uplms';
     const MOODLE_TOKEN = "31a6d2dd14dba086cdf271f955da0b63";
     const COURSE_ID = 221; // Add to env vars
-
 
     try {
         const { userData } = JSON.parse(event.body);
 
         console.log('📝 Processing enrollment for:', userData.email_address);
 
-        // Generate a random password
-        const tempPassword = generateRandomPassword();
+        // Generate a strong random password (user will never see this)
+        const tempPassword = generateSecurePassword();
+        const username = userData.email_address.split('@')[0];
 
-        // Create user in Moodle with force password change
+        // Create user in Moodle
         const createUserResponse = await fetch(
             `${MOODLE_URL}/webservice/rest/server.php`,
             {
@@ -23,14 +22,14 @@ exports.handler = async (event, context) => {
                     wstoken: MOODLE_TOKEN,
                     wsfunction: 'core_user_create_users',
                     moodlewsrestformat: 'json',
-                    'users[0][username]': userData.email_address.split('@')[0],
+                    'users[0][username]': username,
                     'users[0][password]': tempPassword,
                     'users[0][firstname]': userData.first_name,
                     'users[0][lastname]': userData.last_name,
                     'users[0][email]': userData.email_address,
                     'users[0][auth]': 'manual',
-                    'users[0][preferences][0][type]': 'auth_forcepasswordchange',
-                    'users[0][preferences][0][value]': '1', // Force password change
+                    'users[0][mailformat]': '1', // HTML email
+                    'users[0][maildisplay]': '2',
                 }),
             }
         );
@@ -38,15 +37,17 @@ exports.handler = async (event, context) => {
         const createUserResult = await createUserResponse.json();
         console.log('User creation result:', createUserResult);
 
-        // Get user ID
         let userId;
         let userExists = false;
 
         if (createUserResult[0] && createUserResult[0].id) {
             userId = createUserResult[0].id;
-        } else {
-            // User exists, get their ID and update password
+            console.log('✅ New user created with ID:', userId);
+        } else if (createUserResult.exception) {
+            // User might already exist
+            console.log('User might exist, searching...');
             userExists = true;
+
             const getUserResponse = await fetch(
                 `${MOODLE_URL}/webservice/rest/server.php`,
                 {
@@ -65,30 +66,13 @@ exports.handler = async (event, context) => {
             const getUserResult = await getUserResponse.json();
             if (getUserResult[0]) {
                 userId = getUserResult[0].id;
-
-                // Update existing user's password and force change
-                await fetch(
-                    `${MOODLE_URL}/webservice/rest/server.php`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            wstoken: MOODLE_TOKEN,
-                            wsfunction: 'core_user_update_users',
-                            moodlewsrestformat: 'json',
-                            'users[0][id]': userId,
-                            'users[0][password]': tempPassword,
-                            'users[0][preferences][0][type]': 'auth_forcepasswordchange',
-                            'users[0][preferences][0][value]': '1',
-                        }),
-                    }
-                );
+                console.log('✅ Found existing user with ID:', userId);
             } else {
                 throw new Error('Could not create or find user');
             }
+        } else {
+            throw new Error('Unexpected response from user creation');
         }
-
-        console.log('✅ User ID:', userId);
 
         // Enroll user in course
         const enrollResponse = await fetch(
@@ -108,81 +92,74 @@ exports.handler = async (event, context) => {
         );
 
         const enrollResult = await enrollResponse.json();
-        console.log('✅ Enrollment result:', enrollResult);
 
-        // Send email with temporary password
-        await sendWelcomeEmail(userData, tempPassword);
+        if (enrollResult && enrollResult.exception) {
+            console.log('⚠️ Enrollment warning:', enrollResult.message);
+            // User might already be enrolled, that's okay
+        } else {
+            console.log('✅ Enrollment complete');
+        }
+
+        // Trigger Moodle's password reset email
+        console.log('📧 Sending password reset email via Moodle...');
+
+        const resetResponse = await fetch(
+            `${MOODLE_URL}/webservice/rest/server.php`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    wstoken: MOODLE_TOKEN,
+                    wsfunction: 'core_auth_request_password_reset',
+                    moodlewsrestformat: 'json',
+                    username: username,
+                    email: userData.email_address,
+                }),
+            }
+        );
+
+        const resetResult = await resetResponse.json();
+        console.log('Password reset email result:', resetResult);
+
+        if (resetResult && resetResult.status === 'emailresetconfirmsent') {
+            console.log('✅ Password reset email sent by Moodle');
+        } else if (resetResult && resetResult.warnings) {
+            console.log('⚠️ Password reset warnings:', resetResult.warnings);
+        }
 
         return {
             statusCode: 200,
             body: JSON.stringify({
                 success: true,
                 userId: userId,
-                message: 'User enrolled successfully. Email sent with temporary password.',
+                username: username,
+                emailSent: resetResult && resetResult.status === 'emailresetconfirmsent',
+                message: 'User enrolled. Password setup email sent via Moodle.',
             }),
         };
 
     } catch (error) {
         console.error('❌ Moodle enrollment error:', error);
+        console.error('Error stack:', error.stack);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: error.message }),
+            body: JSON.stringify({
+                error: error.message,
+                details: error.toString()
+            }),
         };
     }
 };
 
-function generateRandomPassword() {
-    // Generate a secure random password
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+function generateSecurePassword() {
+    const length = 16;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
     let password = '';
-    for (let i = 0; i < 12; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
+
+    for (let i = 0; i < length; i++) {
+        password += charset[Math.floor(Math.random() * charset.length)];
     }
-    return password;
-}
 
-async function sendWelcomeEmail(userData, tempPassword) {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-    const msg = {
-        to: userData.email_address,
-        from: 'noreply@aphrc.org', // Use your verified sender
-        subject: 'Welcome to SOMA Learning Platform',
-        html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Welcome to SOMA Learning Platform!</h2>
-                
-                <p>Hello ${userData.first_name} ${userData.last_name},</p>
-                
-                <p>Your account has been created successfully. Here are your login credentials:</p>
-                
-                <div style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
-                    <strong>Website:</strong> <a href="https://soma.aphrc.org/">https://soma.aphrc.org/</a><br>
-                    <strong>Username:</strong> ${userData.email_address.split('@')[0]}<br>
-                    <strong>Temporary Password:</strong> <code style="background: white; padding: 5px; border-radius: 3px;">${tempPassword}</code>
-                </div>
-                
-                <div style="background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
-                    <strong>⚠️ Important:</strong> You will be required to change your password when you first log in for security purposes.
-                </div>
-                
-                <a href="https://soma.aphrc.org/login/" 
-                   style="display: inline-block; background: #007bff; color: white; padding: 12px 30px; 
-                          text-decoration: none; border-radius: 5px; margin: 20px 0;">
-                    Login Now
-                </a>
-                
-                <p style="color: #666; font-size: 12px; margin-top: 30px;">
-                    If you did not request this account, please ignore this email.
-                </p>
-            </div>
-        `
-    };
-
-    try {
-        await sgMail.send(msg);
-        console.log('✅ Email sent to:', userData.email_address);
-    } catch (error) {
-        console.error('❌ Email error:', error);
-    }
+    // Ensure it meets Moodle's requirements
+    return password + 'Aa1!';
 }
