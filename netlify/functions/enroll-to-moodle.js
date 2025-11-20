@@ -1,10 +1,11 @@
 const sgMail = require('@sendgrid/mail');
+
 exports.handler = async (event, context) => {
     const MOODLE_URL = process.env.MOODLE_URL || 'https://soma.aphrc.org/uplms';
     const MOODLE_TOKEN = process.env.MOODLE_TOKEN;
     const COURSE_ID = process.env.MOODLE_COURSE_ID || 221;
     const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-    const FROM_EMAIL = 'virtualacademy@aphrc.org' || 'noreply@aphrc.org';
+    const FROM_EMAIL = 'virtualacademy@aphrc.org';
 
     try {
         const { userData } = JSON.parse(event.body);
@@ -14,7 +15,9 @@ exports.handler = async (event, context) => {
         const tempPassword = generateSecurePassword();
         const username = userData.email_address.split('@')[0];
 
-        // Create user in Moodle
+        console.log('🔑 Generated temporary password for user');
+
+        // Create user in Moodle with force password change
         const createUserResponse = await fetch(
             `${MOODLE_URL}/webservice/rest/server.php`,
             {
@@ -32,6 +35,8 @@ exports.handler = async (event, context) => {
                     'users[0][auth]': 'manual',
                     'users[0][mailformat]': '1',
                     'users[0][maildisplay]': '2',
+                    'users[0][preferences][0][type]': 'auth_forcepasswordchange',
+                    'users[0][preferences][0][value]': '1', // Force password change on first login
                 }),
             }
         );
@@ -77,7 +82,7 @@ exports.handler = async (event, context) => {
 
         // Enroll user in course
         console.log('📚 Enrolling user in course...');
-        const enrollResponse = await fetch(
+        await fetch(
             `${MOODLE_URL}/webservice/rest/server.php`,
             {
                 method: 'POST',
@@ -92,14 +97,12 @@ exports.handler = async (event, context) => {
                 }),
             }
         );
+        console.log('✅ User enrolled in course');
 
-        const enrollResult = await enrollResponse.json();
-        console.log('✅ Enrollment complete:', enrollResult);
-
-        // Send email with SendGrid for NEW users
+        // Send email with SendGrid for NEW users - INCLUDING PASSWORD
         let emailSent = false;
         if (isNewUser && SENDGRID_API_KEY && FROM_EMAIL) {
-            console.log('📧 Sending welcome email via SendGrid...');
+            console.log('📧 Sending welcome email with credentials via SendGrid...');
 
             sgMail.setApiKey(SENDGRID_API_KEY);
 
@@ -109,7 +112,7 @@ exports.handler = async (event, context) => {
                     email: FROM_EMAIL,
                     name: 'APHRC VLA'
                 },
-                subject: 'Welcome to the APHRC Virtual Learning Platform - Set Your Password',
+                subject: 'Welcome to the APHRC Virtual Learning Platform - Your Login Details',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                     <div style="background: #007bff; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
@@ -121,44 +124,49 @@ exports.handler = async (event, context) => {
                         
                         <p>Congratulations! Your account has been successfully created on the APHRC Virtual Learning Platform (VLA), and you're now enrolled in your course.</p>
                         
-                        <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border: 2px solid #007bff;">
-                            <p style="margin: 0;"><strong>Your Username:</strong></p>
-                            <p style="margin: 5px 0 0 0; font-size: 18px;">
-                                <code style="background: #e9ecef; padding: 8px 15px; border-radius: 3px; font-weight: bold;">${username}</code>
-                            </p>
+                        <div style="background: white; padding: 25px; border-radius: 5px; margin: 25px 0; border: 2px solid #007bff;">
+                            <h3 style="margin-top: 0; color: #007bff;">Your Login Credentials</h3>
+                            
+                            <div style="margin: 15px 0;">
+                                <p style="margin: 5px 0; color: #666;"><strong>Username:</strong></p>
+                                <p style="margin: 5px 0;">
+                                    <code style="background: #e9ecef; padding: 8px 15px; border-radius: 3px; font-weight: bold; font-size: 16px; display: inline-block;">${username}</code>
+                                </p>
+                            </div>
+                            
+                            <div style="margin: 15px 0;">
+                                <p style="margin: 5px 0; color: #666;"><strong>Temporary Password:</strong></p>
+                                <p style="margin: 5px 0;">
+                                    <code style="background: #fff3cd; padding: 8px 15px; border-radius: 3px; font-weight: bold; font-size: 16px; display: inline-block; border: 1px solid #ffc107;">${tempPassword}</code>
+                                </p>
+                            </div>
                         </div>
                         
-                        <div style="background: #fff3cd; padding: 20px; border-left: 4px solid #ffc107; margin: 20px 0;">
-                            <p style="margin: 0; font-weight: bold;">🔐 Next Step: Set Your Password</p>
-                            <p style="margin: 10px 0 0 0;">To access your course, you need to create a password. Click the button below to get started.</p>
+                        <div style="background: #d4edda; padding: 20px; border-left: 4px solid #28a745; margin: 20px 0;">
+                            <p style="margin: 0; font-weight: bold; color: #155724;">✅ Ready to Login!</p>
+                            <p style="margin: 10px 0 0 0; color: #155724;">Click the button below to login and start learning. You'll be prompted to create a new password on your first login for security.</p>
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="https://soma.aphrc.org/recover-password" 
+                            <a href="${MOODLE_URL}/login/" 
                                style="display: inline-block; background: #28a745; color: white; padding: 15px 40px; 
                                       text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
-                                Set My Password Now
+                                Login Now
                             </a>
                         </div>
                         
                         <div style="background: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                            <p style="margin: 0; font-size: 14px;"><strong>How it works:</strong></p>
+                            <p style="margin: 0; font-size: 14px;"><strong>First Time Login Steps:</strong></p>
                             <ol style="margin: 10px 0 0 0; padding-left: 20px; font-size: 14px;">
-                                <li>Click "Set My Password Now" button above</li>
-                                <li>Enter your email address: <strong>${userData.email_address}</strong></li>
-                                <li>Follow the instructions to create your password</li>
-                                <li>Login and start learning!</li>
+                                <li>Click "Login Now" button above</li>
+                                <li>Enter your username and temporary password</li>
+                                <li>You'll be asked to create a new permanent password</li>
+                                <li>Start learning!</li>
                             </ol>
                         </div>
                         
-                        <p style="text-align: center; margin: 20px 0;">Once you've set your password, login here:</p>
-                        
-                        <div style="text-align: center; margin: 20px 0;">
-                            <a href="${MOODLE_URL}/login/" 
-                               style="display: inline-block; background: #007bff; color: white; padding: 12px 35px; 
-                                      text-decoration: none; border-radius: 5px; font-weight: bold;">
-                                Login to VLA
-                            </a>
+                        <div style="background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                            <p style="margin: 0; font-size: 13px;"><strong>⚠️ Security Note:</strong> For your security, you will be required to change this temporary password when you first login. Please choose a strong, unique password.</p>
                         </div>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
@@ -168,7 +176,7 @@ exports.handler = async (event, context) => {
                         </p>
                         
                         <p style="color: #999; font-size: 11px; text-align: center; margin-top: 20px;">
-                            If you did not register for this account, please ignore this email.
+                            If you did not register for this account, please ignore this email and contact us immediately.
                         </p>
                     </div>
                 </div>
@@ -178,14 +186,22 @@ Welcome to APHRC Virtual Learning Platform!
 
 Hello ${userData.first_name} ${userData.last_name},
 
-Your account has been created successfully!
+Your account has been created successfully and you're enrolled in your course!
 
-Your Username: ${username}
+YOUR LOGIN CREDENTIALS
+====================
+Username: ${username}
+Temporary Password: ${tempPassword}
 
-Next Step: Set Your Password
-Visit this link to create your password: https://soma.aphrc.org/recover-password
+READY TO LOGIN!
+Click here to login: ${MOODLE_URL}/login/
 
-Once you've set your password, login here: ${MOODLE_URL}/login/
+FIRST TIME LOGIN STEPS:
+1. Login with your username and temporary password
+2. You'll be asked to create a new permanent password
+3. Start learning!
+
+SECURITY NOTE: For your security, you will be required to change this temporary password when you first login.
 
 Need help? Contact us at virtualacademy@aphrc.org
 
@@ -195,7 +211,7 @@ If you did not register for this account, please ignore this email.
 
             try {
                 await sgMail.send(msg);
-                console.log('✅ Email sent successfully via SendGrid to:', userData.email_address);
+                console.log('✅ Email with credentials sent successfully to:', userData.email_address);
                 emailSent = true;
             } catch (error) {
                 console.error('❌ SendGrid error:', error);
@@ -204,11 +220,7 @@ If you did not register for this account, please ignore this email.
                 }
             }
         } else {
-            console.log('⚠️ Email not sent. Missing:', {
-                isNewUser,
-                hasSendGrid: !!SENDGRID_API_KEY,
-                hasFromEmail: !!FROM_EMAIL
-            });
+            console.log('⚠️ Email not sent - existing user or missing config');
         }
 
         return {
@@ -220,7 +232,7 @@ If you did not register for this account, please ignore this email.
                 isNewUser: isNewUser,
                 emailSent: emailSent,
                 message: isNewUser
-                    ? 'User enrolled successfully. Welcome email sent.'
+                    ? 'User enrolled successfully. Welcome email with credentials sent.'
                     : 'Existing user enrolled in course.',
             }),
         };
@@ -238,13 +250,16 @@ If you did not register for this account, please ignore this email.
 };
 
 function generateSecurePassword() {
-    const length = 16;
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-    let password = '';
+    // Generate a more memorable but still secure password
+    const adjectives = ['Swift', 'Bright', 'Bold', 'Sharp', 'Quick', 'Wise', 'Strong', 'Clear'];
+    const nouns = ['Tiger', 'Eagle', 'River', 'Mountain', 'Ocean', 'Forest', 'Storm', 'Phoenix'];
+    const numbers = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+    const symbols = '!@#$%';
+    const symbol = symbols[Math.floor(Math.random() * symbols.length)];
 
-    for (let i = 0; i < length; i++) {
-        password += charset[Math.floor(Math.random() * charset.length)];
-    }
+    const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
 
-    return password + 'Aa1!';
+    // Format: AdjectiveNoun1234!
+    return `${adjective}${noun}${numbers}${symbol}`;
 }
