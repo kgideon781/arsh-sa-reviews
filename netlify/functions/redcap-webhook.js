@@ -46,6 +46,7 @@ exports.handler = async (event, context) => {
                 format: "json",
                 type: "flat",
                 records: recordId,
+
             }),
         });
 
