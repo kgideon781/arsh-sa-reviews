@@ -46,8 +46,9 @@ exports.handler = async (event, context) => {
         const data = await apiResponse.json();
         console.log("📌 Updated record from REDCap:", data);
 
-        // Save to Supabase
         const record = data[0] || data;
+
+        // Save to Supabase
         const { error } = await supabase
             .from('redcap_records')
             .insert({
@@ -60,6 +61,28 @@ exports.handler = async (event, context) => {
             console.error("Supabase error:", error);
         } else {
             console.log("✅ Saved to Supabase!");
+        }
+
+        // NEW: Enroll to Moodle if form is complete
+        if (body.catalyze_impact_initiative_complete === '2') {
+            console.log("🎓 Enrolling to Moodle...");
+
+            try {
+                const moodleResponse = await fetch(
+                    'https://arsh-sa-proposals-review.netlify.app/.netlify/functions/enroll-to-moodle',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userData: record })
+                    }
+                );
+
+                const moodleResult = await moodleResponse.json();
+                console.log("Moodle enrollment result:", moodleResult);
+            } catch (moodleError) {
+                console.error("Moodle enrollment failed:", moodleError);
+                // Don't fail the whole process if Moodle enrollment fails
+            }
         }
 
         return {
