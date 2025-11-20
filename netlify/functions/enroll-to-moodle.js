@@ -3,7 +3,6 @@ const sgMail = require('@sendgrid/mail');
 exports.handler = async (event, context) => {
     const MOODLE_URL = process.env.MOODLE_URL || 'https://soma.aphrc.org/uplms';
     const MOODLE_TOKEN = process.env.MOODLE_TOKEN;
-    const COURSE_ID = process.env.MOODLE_COURSE_ID || 221;
     const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
     const FROM_EMAIL = 'virtualacademy@aphrc.org';
 
@@ -11,6 +10,29 @@ exports.handler = async (event, context) => {
         const { userData } = JSON.parse(event.body);
 
         console.log('📝 Processing enrollment for:', userData.email_address);
+
+        // Parse selected courses from REDCap
+        // REDCap sends checkboxes as: selected_courses___221: "1", selected_courses___225: "1"
+        const selectedCourses = [];
+        for (const key in userData) {
+            if (key.startsWith('selected_courses___') && userData[key] === '1') {
+                const courseId = key.replace('selected_courses___', '');
+                selectedCourses.push(courseId);
+            }
+        }
+
+        console.log('📚 Selected courses:', selectedCourses);
+
+        if (selectedCourses.length === 0) {
+            console.log('⚠️ No courses selected');
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    success: false,
+                    message: 'No courses selected'
+                })
+            };
+        }
 
         const tempPassword = generateSecurePassword();
         const username = userData.email_address.split('@')[0];
@@ -36,7 +58,7 @@ exports.handler = async (event, context) => {
                     'users[0][mailformat]': '1',
                     'users[0][maildisplay]': '2',
                     'users[0][preferences][0][type]': 'auth_forcepasswordchange',
-                    'users[0][preferences][0][value]': '1', // Force password change on first login
+                    'users[0][preferences][0][value]': '1',
                 }),
             }
         );
@@ -69,7 +91,6 @@ exports.handler = async (event, context) => {
                 }
             );
 
-
             const getUserResult = await getUserResponse.json();
             if (getUserResult[0]) {
                 userId = getUserResult[0].id;
@@ -81,31 +102,59 @@ exports.handler = async (event, context) => {
             throw new Error('Unexpected response from user creation');
         }
 
-        // Enroll user in course
-        console.log('📚 Enrolling user in course...');
-        await fetch(
-            `${MOODLE_URL}/webservice/rest/server.php`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    wstoken: MOODLE_TOKEN,
-                    wsfunction: 'enrol_manual_enrol_users',
-                    moodlewsrestformat: 'json',
-                    'enrolments[0][roleid]': 5,
-                    'enrolments[0][userid]': userId,
-                    'enrolments[0][courseid]': COURSE_ID,
-                }),
-            }
-        );
-        console.log('✅ User enrolled in course');
+        // Enroll user in ALL selected courses
+        console.log('📚 Enrolling user in', selectedCourses.length, 'courses...');
 
-        // Send email with SendGrid for NEW users - INCLUDING PASSWORD
+        const enrollmentResults = [];
+        for (const courseId of selectedCourses) {
+            try {
+                const enrollResponse = await fetch(
+                    `${MOODLE_URL}/webservice/rest/server.php`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            wstoken: MOODLE_TOKEN,
+                            wsfunction: 'enrol_manual_enrol_users',
+                            moodlewsrestformat: 'json',
+                            'enrolments[0][roleid]': 5,
+                            'enrolments[0][userid]': userId,
+                            'enrolments[0][courseid]': courseId,
+                        }),
+                    }
+                );
+
+                const enrollResult = await enrollResponse.json();
+                console.log(`✅ Enrolled in course ${courseId}:`, enrollResult);
+                enrollmentResults.push({ courseId, success: true });
+            } catch (error) {
+                console.error(`❌ Failed to enroll in course ${courseId}:`, error);
+                enrollmentResults.push({ courseId, success: false, error: error.message });
+            }
+        }
+
+        // Get course names for the email
+        const courseNames = await getCourseNames(MOODLE_URL, MOODLE_TOKEN, selectedCourses);
+
+        // Send email with SendGrid for NEW users
         let emailSent = false;
         if (isNewUser && SENDGRID_API_KEY && FROM_EMAIL) {
             console.log('📧 Sending welcome email with credentials via SendGrid...');
 
             sgMail.setApiKey(SENDGRID_API_KEY);
+
+            // Build course list HTML
+            const courseListHtml = courseNames.map(course =>
+                `<li style="margin: 5px 0;">
+                    <a href="${MOODLE_URL}/course/view.php?id=${course.id}" style="color: #007bff; text-decoration: none;">
+                        ${course.name}
+                    </a>
+                </li>`
+            ).join('');
+
+            const courseListText = courseNames.map(course =>
+                `- ${course.name} (${MOODLE_URL}/course/view.php?id=${course.id})`
+            ).join('\n');
 
             const msg = {
                 to: userData.email_address,
@@ -123,15 +172,22 @@ exports.handler = async (event, context) => {
                     <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px;">
                         <h2>Hello ${userData.first_name} ${userData.last_name},</h2>
                         
-                        <p>Congratulations! Your account has been successfully created on the APHRC Virtual Learning Platform (VLA), and you're now enrolled in your course.</p>
+                        <p>Congratulations! Your account has been successfully created on the APHRC Virtual Learning Platform (VLA).</p>
+                        
+                        <div style="background: #e7f3ff; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                            <h3 style="margin-top: 0; color: #007bff;">📚 You're enrolled in ${selectedCourses.length} course${selectedCourses.length > 1 ? 's' : ''}:</h3>
+                            <ul style="margin: 10px 0; padding-left: 20px;">
+                                ${courseListHtml}
+                            </ul>
+                        </div>
                         
                         <div style="background: white; padding: 25px; border-radius: 5px; margin: 25px 0; border: 2px solid #007bff;">
                             <h3 style="margin-top: 0; color: #007bff;">Your Login Credentials</h3>
                             
                             <div style="margin: 15px 0;">
-                                <p style="margin: 5px 0; color: #666;"><strong>Email:</strong></p>
+                                <p style="margin: 5px 0; color: #666;"><strong>Username:</strong></p>
                                 <p style="margin: 5px 0;">
-                                    <code style="background: #e9ecef; padding: 8px 15px; border-radius: 3px; font-weight: bold; font-size: 16px; display: inline-block;">${userData.email_address}</code>
+                                    <code style="background: #e9ecef; padding: 8px 15px; border-radius: 3px; font-weight: bold; font-size: 16px; display: inline-block;">${username}</code>
                                 </p>
                             </div>
                             
@@ -162,7 +218,7 @@ exports.handler = async (event, context) => {
                                 <li>Click "Login Now" button above</li>
                                 <li>Enter your username and temporary password</li>
                                 <li>You'll be asked to create a new permanent password</li>
-                                <li>Start learning!</li>
+                                <li>Access your courses from the dashboard</li>
                             </ol>
                         </div>
                         
@@ -187,11 +243,14 @@ Welcome to APHRC Virtual Learning Platform!
 
 Hello ${userData.first_name} ${userData.last_name},
 
-Your account has been created successfully and you're enrolled in your course!
+Your account has been created successfully!
+
+YOU'RE ENROLLED IN ${selectedCourses.length} COURSE${selectedCourses.length > 1 ? 'S' : ''}:
+${courseListText}
 
 YOUR LOGIN CREDENTIALS
 ====================
-Username: ${userData.email_address}
+Username: ${username}
 Temporary Password: ${tempPassword}
 
 READY TO LOGIN!
@@ -200,7 +259,8 @@ Click here to login: https://soma.aphrc.org/login
 FIRST TIME LOGIN STEPS:
 1. Login with your username and temporary password
 2. You'll be asked to create a new permanent password
-3. Start learning!
+3. Access your courses from the dashboard
+4. Start learning!
 
 SECURITY NOTE: For your security, you will be required to change this temporary password when you first login.
 
@@ -220,8 +280,6 @@ If you did not register for this account, please ignore this email.
                     console.error('SendGrid response body:', error.response.body);
                 }
             }
-        } else {
-            console.log('⚠️ Email not sent - existing user or missing config');
         }
 
         return {
@@ -231,10 +289,9 @@ If you did not register for this account, please ignore this email.
                 userId: userId,
                 username: username,
                 isNewUser: isNewUser,
+                coursesEnrolled: enrollmentResults,
                 emailSent: emailSent,
-                message: isNewUser
-                    ? 'User enrolled successfully. Welcome email with credentials sent.'
-                    : 'Existing user enrolled in course.',
+                message: `User enrolled in ${selectedCourses.length} course(s) successfully.`,
             }),
         };
 
@@ -250,8 +307,39 @@ If you did not register for this account, please ignore this email.
     }
 };
 
+async function getCourseNames(moodleUrl, moodleToken, courseIds) {
+    try {
+        const response = await fetch(
+            `${moodleUrl}/webservice/rest/server.php`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    wstoken: moodleToken,
+                    wsfunction: 'core_course_get_courses',
+                    moodlewsrestformat: 'json',
+                }),
+            }
+        );
+
+        const allCourses = await response.json();
+
+        // Filter to only the courses the user selected
+        return courseIds.map(courseId => {
+            const course = allCourses.find(c => c.id.toString() === courseId.toString());
+            return {
+                id: courseId,
+                name: course ? course.fullname : `Course ${courseId}`
+            };
+        });
+    } catch (error) {
+        console.error('Error fetching course names:', error);
+        // Return basic info if fetch fails
+        return courseIds.map(id => ({ id, name: `Course ${id}` }));
+    }
+}
+
 function generateSecurePassword() {
-    // Generate a more memorable but still secure password
     const adjectives = ['Swift', 'Bright', 'Bold', 'Sharp', 'Quick', 'Wise', 'Strong', 'Clear'];
     const nouns = ['Tiger', 'Eagle', 'River', 'Mountain', 'Ocean', 'Forest', 'Storm', 'Phoenix'];
     const numbers = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
@@ -261,6 +349,5 @@ function generateSecurePassword() {
     const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
     const noun = nouns[Math.floor(Math.random() * nouns.length)];
 
-    // Format: AdjectiveNoun1234!
     return `${adjective}${noun}${numbers}${symbol}`;
 }
