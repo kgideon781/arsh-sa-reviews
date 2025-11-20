@@ -107,19 +107,19 @@ exports.handler = async (event, context) => {
                 to: userData.email_address,
                 from: {
                     email: FROM_EMAIL,
-                    name: 'SOMA Learning Platform'
+                    name: 'APHRC VLA'
                 },
-                subject: 'Welcome to SOMA Learning Platform - Set Your Password',
+                subject: 'Welcome to the APHRC Virtual Learning Platform - Set Your Password',
                 html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                     <div style="background: #007bff; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                        <h1 style="margin: 0;">Welcome to SOMA!</h1>
+                        <h1 style="margin: 0;">Welcome to the APHRC VLA!</h1>
                     </div>
                     
                     <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px;">
                         <h2>Hello ${userData.first_name} ${userData.last_name},</h2>
                         
-                        <p>Congratulations! Your account has been successfully created on the SOMA Learning Platform, and you're now enrolled in your course.</p>
+                        <p>Congratulations! Your account has been successfully created on the APHRC Virtual Learning Platform (VLA), and you're now enrolled in your course.</p>
                         
                         <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border: 2px solid #007bff;">
                             <p style="margin: 0;"><strong>Your Username:</strong></p>
@@ -134,7 +134,7 @@ exports.handler = async (event, context) => {
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${MOODLE_URL}/login/forgot_password.php" 
+                            <a href="https://soma.aphrc.org/recover-password" 
                                style="display: inline-block; background: #28a745; color: white; padding: 15px 40px; 
                                       text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
                                 Set My Password Now
@@ -145,7 +145,7 @@ exports.handler = async (event, context) => {
                             <p style="margin: 0; font-size: 14px;"><strong>How it works:</strong></p>
                             <ol style="margin: 10px 0 0 0; padding-left: 20px; font-size: 14px;">
                                 <li>Click "Set My Password Now" button above</li>
-                                <li>Enter your username: <strong>${username}</strong></li>
+                                <li>Enter your email address: <strong>${userData.email_address}</strong></li>
                                 <li>Follow the instructions to create your password</li>
                                 <li>Login and start learning!</li>
                             </ol>
@@ -157,14 +157,14 @@ exports.handler = async (event, context) => {
                             <a href="${MOODLE_URL}/login/" 
                                style="display: inline-block; background: #007bff; color: white; padding: 12px 35px; 
                                       text-decoration: none; border-radius: 5px; font-weight: bold;">
-                                Login to SOMA
+                                Login to VLA
                             </a>
                         </div>
                         
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
                         
                         <p style="color: #666; font-size: 12px; text-align: center;">
-                            Need help? Contact us at <a href="mailto:support@aphrc.org">support@aphrc.org</a>
+                            Need help? Contact us at <a href="mailto:virtualacademy@aphrc.org">virtualacademy@aphrc.org</a>
                         </p>
                         
                         <p style="color: #999; font-size: 11px; text-align: center; margin-top: 20px;">
@@ -174,7 +174,7 @@ exports.handler = async (event, context) => {
                 </div>
             `,
                 text: `
-Welcome to SOMA Learning Platform!
+Welcome to APHRC Virtual Learning Platform!
 
 Hello ${userData.first_name} ${userData.last_name},
 
@@ -183,11 +183,11 @@ Your account has been created successfully!
 Your Username: ${username}
 
 Next Step: Set Your Password
-Visit this link to create your password: ${MOODLE_URL}/login/forgot_password.php
+Visit this link to create your password: https://soma.aphrc.org/recover-password
 
 Once you've set your password, login here: ${MOODLE_URL}/login/
 
-Need help? Contact us at support@aphrc.org
+Need help? Contact us at virtualacademy@aphrc.org
 
 If you did not register for this account, please ignore this email.
             `
