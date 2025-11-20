@@ -1,18 +1,21 @@
+const sgMail = require('@sendgrid/mail');
 exports.handler = async (event, context) => {
     const MOODLE_URL = 'https://soma.aphrc.org/uplms';
     const MOODLE_TOKEN = "31a6d2dd14dba086cdf271f955da0b63";
     const COURSE_ID = 221; // Add to env vars
+    const SENDGRID_API_KEY = "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";
+    const FROM_EMAIL = 'virtualacademy@aphrc.org' || 'noreply@aphrc.org';
+
 
     try {
         const { userData } = JSON.parse(event.body);
 
         console.log('📝 Processing enrollment for:', userData.email_address);
 
-        // Generate a strong random password
         const tempPassword = generateSecurePassword();
         const username = userData.email_address.split('@')[0];
 
-        // Create user in Moodle (without createpassword parameter)
+        // Create user in Moodle
         const createUserResponse = await fetch(
             `${MOODLE_URL}/webservice/rest/server.php`,
             {
@@ -45,7 +48,6 @@ exports.handler = async (event, context) => {
             isNewUser = true;
             console.log('✅ New user created with ID:', userId);
         } else if (createUserResult.exception) {
-            // User might already exist
             console.log('User might exist, searching...');
 
             const getUserResponse = await fetch(
@@ -93,37 +95,121 @@ exports.handler = async (event, context) => {
         );
 
         const enrollResult = await enrollResponse.json();
-        console.log('✅ Enrollment result:', enrollResult);
+        console.log('✅ Enrollment complete:', enrollResult);
 
-        // Only send password reset for NEW users
-        if (isNewUser) {
-            console.log('📧 Triggering password reset email via Moodle...');
+        // Send email with SendGrid for NEW users
+        let emailSent = false;
+        if (isNewUser && SENDGRID_API_KEY && FROM_EMAIL) {
+            console.log('📧 Sending welcome email via SendGrid...');
 
-            // Try with email only (not username)
-            const resetResponse = await fetch(
-                `${MOODLE_URL}/webservice/rest/server.php`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        wstoken: MOODLE_TOKEN,
-                        wsfunction: 'core_auth_request_password_reset',
-                        moodlewsrestformat: 'json',
-                        email: userData.email_address, // Only email, no username
-                    }),
+            sgMail.setApiKey(SENDGRID_API_KEY);
+
+            const msg = {
+                to: userData.email_address,
+                from: {
+                    email: FROM_EMAIL,
+                    name: 'SOMA Learning Platform'
+                },
+                subject: 'Welcome to SOMA Learning Platform - Set Your Password',
+                html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: #007bff; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                        <h1 style="margin: 0;">Welcome to SOMA!</h1>
+                    </div>
+                    
+                    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px;">
+                        <h2>Hello ${userData.first_name} ${userData.last_name},</h2>
+                        
+                        <p>Congratulations! Your account has been successfully created on the SOMA Learning Platform, and you're now enrolled in your course.</p>
+                        
+                        <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border: 2px solid #007bff;">
+                            <p style="margin: 0;"><strong>Your Username:</strong></p>
+                            <p style="margin: 5px 0 0 0; font-size: 18px;">
+                                <code style="background: #e9ecef; padding: 8px 15px; border-radius: 3px; font-weight: bold;">${username}</code>
+                            </p>
+                        </div>
+                        
+                        <div style="background: #fff3cd; padding: 20px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                            <p style="margin: 0; font-weight: bold;">🔐 Next Step: Set Your Password</p>
+                            <p style="margin: 10px 0 0 0;">To access your course, you need to create a password. Click the button below to get started.</p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${MOODLE_URL}/login/forgot_password.php" 
+                               style="display: inline-block; background: #28a745; color: white; padding: 15px 40px; 
+                                      text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
+                                Set My Password Now
+                            </a>
+                        </div>
+                        
+                        <div style="background: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <p style="margin: 0; font-size: 14px;"><strong>How it works:</strong></p>
+                            <ol style="margin: 10px 0 0 0; padding-left: 20px; font-size: 14px;">
+                                <li>Click "Set My Password Now" button above</li>
+                                <li>Enter your username: <strong>${username}</strong></li>
+                                <li>Follow the instructions to create your password</li>
+                                <li>Login and start learning!</li>
+                            </ol>
+                        </div>
+                        
+                        <p style="text-align: center; margin: 20px 0;">Once you've set your password, login here:</p>
+                        
+                        <div style="text-align: center; margin: 20px 0;">
+                            <a href="${MOODLE_URL}/login/" 
+                               style="display: inline-block; background: #007bff; color: white; padding: 12px 35px; 
+                                      text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                Login to SOMA
+                            </a>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                        
+                        <p style="color: #666; font-size: 12px; text-align: center;">
+                            Need help? Contact us at <a href="mailto:support@aphrc.org">support@aphrc.org</a>
+                        </p>
+                        
+                        <p style="color: #999; font-size: 11px; text-align: center; margin-top: 20px;">
+                            If you did not register for this account, please ignore this email.
+                        </p>
+                    </div>
+                </div>
+            `,
+                text: `
+Welcome to SOMA Learning Platform!
+
+Hello ${userData.first_name} ${userData.last_name},
+
+Your account has been created successfully!
+
+Your Username: ${username}
+
+Next Step: Set Your Password
+Visit this link to create your password: ${MOODLE_URL}/login/forgot_password.php
+
+Once you've set your password, login here: ${MOODLE_URL}/login/
+
+Need help? Contact us at support@aphrc.org
+
+If you did not register for this account, please ignore this email.
+            `
+            };
+
+            try {
+                await sgMail.send(msg);
+                console.log('✅ Email sent successfully via SendGrid to:', userData.email_address);
+                emailSent = true;
+            } catch (error) {
+                console.error('❌ SendGrid error:', error);
+                if (error.response) {
+                    console.error('SendGrid response body:', error.response.body);
                 }
-            );
-
-            const resetResult = await resetResponse.json();
-            console.log('📧 Password reset result:', resetResult);
-
-            if (resetResult && resetResult.status === 'emailresetconfirmsent') {
-                console.log('✅ Password reset email sent successfully');
-            } else {
-                console.log('⚠️ Password reset response:', resetResult);
             }
         } else {
-            console.log('ℹ️ Skipping password reset for existing user');
+            console.log('⚠️ Email not sent. Missing:', {
+                isNewUser,
+                hasSendGrid: !!SENDGRID_API_KEY,
+                hasFromEmail: !!FROM_EMAIL
+            });
         }
 
         return {
@@ -133,20 +219,20 @@ exports.handler = async (event, context) => {
                 userId: userId,
                 username: username,
                 isNewUser: isNewUser,
+                emailSent: emailSent,
                 message: isNewUser
-                    ? 'User enrolled. Password setup email sent via Moodle.'
+                    ? 'User enrolled successfully. Welcome email sent.'
                     : 'Existing user enrolled in course.',
             }),
         };
 
     } catch (error) {
-        console.error('❌ Moodle enrollment error:', error);
+        console.error('❌ Enrollment error:', error);
         console.error('Error stack:', error.stack);
         return {
             statusCode: 500,
             body: JSON.stringify({
-                error: error.message,
-                details: error.toString()
+                error: error.message
             }),
         };
     }
