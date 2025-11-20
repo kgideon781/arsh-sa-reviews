@@ -1,14 +1,11 @@
-// In-memory storage
-let recordsMemory = [];
+const { getStore } = require('@netlify/blobs');
 
 exports.handler = async (event, context) => {
     const API_URL = 'https://surveys.aphrc.org/redcap/api/';
 
     try {
         console.log("🔔 REDCap DET Trigger Received");
-        console.log("Raw event.body:", event.body);
-        console.log("Type of event.body:", typeof event.body);
-        // Parse the incoming body
+
         let body;
         if (typeof event.body === 'string') {
             try {
@@ -21,7 +18,7 @@ exports.handler = async (event, context) => {
             body = event.body || {};
         }
 
-        console.log("🔔 Parsed body:", body);
+        console.log("Parsed body:", body);
 
         const recordId = body.record || body.record_id;
         if (!recordId) {
@@ -33,7 +30,7 @@ exports.handler = async (event, context) => {
             method: "POST",
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
-                token: '41511809027787BF40860383A25B03CE', // replace with your token
+                token: '41511809027787BF40860383A25B03CE',
                 content: "record",
                 format: "json",
                 type: "flat",
@@ -44,8 +41,30 @@ exports.handler = async (event, context) => {
         const data = await apiResponse.json();
         console.log("📌 Updated record from REDCap:", data);
 
-        // Save record in memory
-        recordsMemory.push(...data);
+        // Store in Netlify Blobs
+        const store = getStore('redcap-records');
+
+        // Get existing records
+        let existingRecords = [];
+        try {
+            const storedData = await store.get('records');
+            if (storedData) {
+                existingRecords = JSON.parse(storedData);
+            }
+        } catch (e) {
+            console.log("No existing records found");
+        }
+
+        // Add new record(s)
+        existingRecords.push(...data);
+
+        // Keep only last 100 records to avoid bloating
+        if (existingRecords.length > 100) {
+            existingRecords = existingRecords.slice(-100);
+        }
+
+        // Save back to store
+        await store.set('records', JSON.stringify(existingRecords));
 
         return {
             statusCode: 200,
@@ -57,8 +76,3 @@ exports.handler = async (event, context) => {
         return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
     }
 };
-
-// Expose records for retrieval
-exports.getRecords = () => recordsMemory;
-
-
