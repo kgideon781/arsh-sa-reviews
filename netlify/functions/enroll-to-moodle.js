@@ -149,7 +149,7 @@ exports.handler = async (event, context) => {
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="$https://soma.aphrc.org/login" 
+                            <a href="https://soma.aphrc.org/login" 
                                style="display: inline-block; background: #28a745; color: white; padding: 15px 40px; 
                                       text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
                                 Login Now
