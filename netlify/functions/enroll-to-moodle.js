@@ -1,11 +1,10 @@
 const sgMail = require('@sendgrid/mail');
 exports.handler = async (event, context) => {
-    const MOODLE_URL = 'https://soma.aphrc.org/uplms';
-    const MOODLE_TOKEN = "31a6d2dd14dba086cdf271f955da0b63";
-    const COURSE_ID = 221; // Add to env vars
-    const SENDGRID_API_KEY = "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";
+    const MOODLE_URL = process.env.MOODLE_URL || 'https://soma.aphrc.org/uplms';
+    const MOODLE_TOKEN = process.env.MOODLE_TOKEN;
+    const COURSE_ID = process.env.MOODLE_COURSE_ID || 221;
+    const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
     const FROM_EMAIL = 'virtualacademy@aphrc.org' || 'noreply@aphrc.org';
-
 
     try {
         const { userData } = JSON.parse(event.body);
