@@ -5,6 +5,9 @@ exports.handler = async (event, context) => {
     const API_URL = 'https://surveys.aphrc.org/redcap/api/';
 
     try {
+        console.log("🔔 REDCap DET Trigger Received");
+        console.log("Raw event.body:", event.body);
+        console.log("Type of event.body:", typeof event.body);
         // Parse the incoming body
         let body;
         if (typeof event.body === 'string') {
