@@ -1,4 +1,9 @@
-const { getStore } = require('@netlify/blobs');
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+);
 
 exports.handler = async (event, context) => {
     const API_URL = 'https://surveys.aphrc.org/redcap/api/';
@@ -41,30 +46,21 @@ exports.handler = async (event, context) => {
         const data = await apiResponse.json();
         console.log("📌 Updated record from REDCap:", data);
 
-        // Store in Netlify Blobs
-        const store = getStore('redcap-records');
+        // Save to Supabase
+        const record = data[0] || data;
+        const { error } = await supabase
+            .from('redcap_records')
+            .insert({
+                record_id: recordId,
+                instrument: body.instrument,
+                data: record
+            });
 
-        // Get existing records
-        let existingRecords = [];
-        try {
-            const storedData = await store.get('records');
-            if (storedData) {
-                existingRecords = JSON.parse(storedData);
-            }
-        } catch (e) {
-            console.log("No existing records found");
+        if (error) {
+            console.error("Supabase error:", error);
+        } else {
+            console.log("✅ Saved to Supabase!");
         }
-
-        // Add new record(s)
-        existingRecords.push(...data);
-
-        // Keep only last 100 records to avoid bloating
-        if (existingRecords.length > 100) {
-            existingRecords = existingRecords.slice(-100);
-        }
-
-        // Save back to store
-        await store.set('records', JSON.stringify(existingRecords));
 
         return {
             statusCode: 200,

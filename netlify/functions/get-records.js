@@ -1,18 +1,28 @@
-const { getStore } = require('@netlify/blobs');
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+);
 
 exports.handler = async () => {
     try {
-        const store = getStore('redcap-records');
-        const storedData = await store.get('records');
+        const { data, error } = await supabase
+            .from('redcap_records')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
 
-        const records = storedData ? JSON.parse(storedData) : [];
+        if (error) {
+            throw error;
+        }
 
         return {
             statusCode: 200,
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(records),
+            body: JSON.stringify(data || []),
         };
     } catch (error) {
         console.error('Error fetching records:', error);
