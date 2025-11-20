@@ -8,11 +8,11 @@ exports.handler = async (event, context) => {
 
         console.log('📝 Processing enrollment for:', userData.email_address);
 
-        // Generate a strong random password (user will never see this)
+        // Generate a strong random password
         const tempPassword = generateSecurePassword();
         const username = userData.email_address.split('@')[0];
 
-        // Create user in Moodle
+        // Create user in Moodle (without createpassword parameter)
         const createUserResponse = await fetch(
             `${MOODLE_URL}/webservice/rest/server.php`,
             {
@@ -28,7 +28,7 @@ exports.handler = async (event, context) => {
                     'users[0][lastname]': userData.last_name,
                     'users[0][email]': userData.email_address,
                     'users[0][auth]': 'manual',
-                    'users[0][mailformat]': '1', // HTML email
+                    'users[0][mailformat]': '1',
                     'users[0][maildisplay]': '2',
                 }),
             }
@@ -38,15 +38,15 @@ exports.handler = async (event, context) => {
         console.log('User creation result:', createUserResult);
 
         let userId;
-        let userExists = false;
+        let isNewUser = false;
 
         if (createUserResult[0] && createUserResult[0].id) {
             userId = createUserResult[0].id;
+            isNewUser = true;
             console.log('✅ New user created with ID:', userId);
         } else if (createUserResult.exception) {
             // User might already exist
             console.log('User might exist, searching...');
-            userExists = true;
 
             const getUserResponse = await fetch(
                 `${MOODLE_URL}/webservice/rest/server.php`,
@@ -75,6 +75,7 @@ exports.handler = async (event, context) => {
         }
 
         // Enroll user in course
+        console.log('📚 Enrolling user in course...');
         const enrollResponse = await fetch(
             `${MOODLE_URL}/webservice/rest/server.php`,
             {
@@ -84,7 +85,7 @@ exports.handler = async (event, context) => {
                     wstoken: MOODLE_TOKEN,
                     wsfunction: 'enrol_manual_enrol_users',
                     moodlewsrestformat: 'json',
-                    'enrolments[0][roleid]': 5, // Student role
+                    'enrolments[0][roleid]': 5,
                     'enrolments[0][userid]': userId,
                     'enrolments[0][courseid]': COURSE_ID,
                 }),
@@ -92,39 +93,37 @@ exports.handler = async (event, context) => {
         );
 
         const enrollResult = await enrollResponse.json();
+        console.log('✅ Enrollment result:', enrollResult);
 
-        if (enrollResult && enrollResult.exception) {
-            console.log('⚠️ Enrollment warning:', enrollResult.message);
-            // User might already be enrolled, that's okay
-        } else {
-            console.log('✅ Enrollment complete');
-        }
+        // Only send password reset for NEW users
+        if (isNewUser) {
+            console.log('📧 Triggering password reset email via Moodle...');
 
-        // Trigger Moodle's password reset email
-        console.log('📧 Sending password reset email via Moodle...');
+            // Try with email only (not username)
+            const resetResponse = await fetch(
+                `${MOODLE_URL}/webservice/rest/server.php`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        wstoken: MOODLE_TOKEN,
+                        wsfunction: 'core_auth_request_password_reset',
+                        moodlewsrestformat: 'json',
+                        email: userData.email_address, // Only email, no username
+                    }),
+                }
+            );
 
-        const resetResponse = await fetch(
-            `${MOODLE_URL}/webservice/rest/server.php`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    wstoken: MOODLE_TOKEN,
-                    wsfunction: 'core_auth_request_password_reset',
-                    moodlewsrestformat: 'json',
-                    username: username,
-                    email: userData.email_address,
-                }),
+            const resetResult = await resetResponse.json();
+            console.log('📧 Password reset result:', resetResult);
+
+            if (resetResult && resetResult.status === 'emailresetconfirmsent') {
+                console.log('✅ Password reset email sent successfully');
+            } else {
+                console.log('⚠️ Password reset response:', resetResult);
             }
-        );
-
-        const resetResult = await resetResponse.json();
-        console.log('Password reset email result:', resetResult);
-
-        if (resetResult && resetResult.status === 'emailresetconfirmsent') {
-            console.log('✅ Password reset email sent by Moodle');
-        } else if (resetResult && resetResult.warnings) {
-            console.log('⚠️ Password reset warnings:', resetResult.warnings);
+        } else {
+            console.log('ℹ️ Skipping password reset for existing user');
         }
 
         return {
@@ -133,8 +132,10 @@ exports.handler = async (event, context) => {
                 success: true,
                 userId: userId,
                 username: username,
-                emailSent: resetResult && resetResult.status === 'emailresetconfirmsent',
-                message: 'User enrolled. Password setup email sent via Moodle.',
+                isNewUser: isNewUser,
+                message: isNewUser
+                    ? 'User enrolled. Password setup email sent via Moodle.'
+                    : 'Existing user enrolled in course.',
             }),
         };
 
@@ -160,6 +161,5 @@ function generateSecurePassword() {
         password += charset[Math.floor(Math.random() * charset.length)];
     }
 
-    // Ensure it meets Moodle's requirements
     return password + 'Aa1!';
 }
