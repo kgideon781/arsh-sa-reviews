@@ -128,9 +128,9 @@ exports.handler = async (event, context) => {
                             <h3 style="margin-top: 0; color: #007bff;">Your Login Credentials</h3>
                             
                             <div style="margin: 15px 0;">
-                                <p style="margin: 5px 0; color: #666;"><strong>Username:</strong></p>
+                                <p style="margin: 5px 0; color: #666;"><strong>Email:</strong></p>
                                 <p style="margin: 5px 0;">
-                                    <code style="background: #e9ecef; padding: 8px 15px; border-radius: 3px; font-weight: bold; font-size: 16px; display: inline-block;">${username}</code>
+                                    <code style="background: #e9ecef; padding: 8px 15px; border-radius: 3px; font-weight: bold; font-size: 16px; display: inline-block;">${userData.email_address}</code>
                                 </p>
                             </div>
                             
@@ -148,7 +148,7 @@ exports.handler = async (event, context) => {
                         </div>
                         
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${MOODLE_URL}/login/" 
+                            <a href="$https://soma.aphrc.org/login" 
                                style="display: inline-block; background: #28a745; color: white; padding: 15px 40px; 
                                       text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
                                 Login Now
@@ -190,11 +190,11 @@ Your account has been created successfully and you're enrolled in your course!
 
 YOUR LOGIN CREDENTIALS
 ====================
-Username: ${username}
+Username: ${userData.email_address}
 Temporary Password: ${tempPassword}
 
 READY TO LOGIN!
-Click here to login: ${MOODLE_URL}/login/
+Click here to login: https://soma.aphrc.org/login
 
 FIRST TIME LOGIN STEPS:
 1. Login with your username and temporary password
